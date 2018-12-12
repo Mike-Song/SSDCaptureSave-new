@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Tasks SYSTEM "Tasks-6.0.dtd">
+<!-- eric6 tasks file for project SSDCaptureSave -->
+<!-- Saved: 2018-12-12, 23:22:44 -->
+<Tasks version="6.0">
+  <ProjectScanFilter></ProjectScanFilter>
+  <Task priority="1" completed="False" type="1" uid="{7b51f242-02d8-4913-bbe9-498cd81c9981}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>992</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{ff367d77-c94e-4ab3-a24c-5c38d3724b79}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1007</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{6b54a43b-ecc4-4f42-ac1c-83a2529174f3}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1345</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{4aa7a25e-d524-48c2-b328-be39764750c4}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1363</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{dcf87dc5-476b-4e2f-98c3-c32349cae827}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1380</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{6e3a7b9a-7b94-43b1-9a9b-140150cd8503}">
+    <Summary>TODO: Save the last one data</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1450</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{c1473004-7e7a-4412-a0ae-c7f5badf7fe6}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1461</Linenumber>
+    </Resource>
+  </Task>
+  <Task priority="1" completed="False" type="1" uid="{375ca509-5948-4ae2-aad8-dfa6603127da}">
+    <Summary>TODO: not implemented yet</Summary>
+    <Description></Description>
+    <Created>2018-12-12, 23:22:41</Created>
+    <Resource>
+      <Filename>SSDCaptureSave.py</Filename>
+      <Linenumber>1469</Linenumber>
+    </Resource>
+  </Task>
+</Tasks>
