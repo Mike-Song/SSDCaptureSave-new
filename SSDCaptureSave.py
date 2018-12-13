@@ -8,9 +8,9 @@ import datetime
 import threading
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from matplotlib.ticker import MultipleLocator#, FormatStrFormatter
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+#from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -45,6 +45,11 @@ class UDPSocketClient:
        self.mData, self.mAddress = self.mUDPClient.recvfrom(gSocketBufSize)
        return self.mData
 
+#class DataProcessor():
+#    def __init__(self,  data):
+#        self.mOriginalData = data
+        
+    
 class SignalThread(threading.Thread):  
     def __init__(self, axes, canvas, fileName, timeout):  
         super(SignalThread, self).__init__()  
@@ -56,11 +61,6 @@ class SignalThread(threading.Thread):
         self.fileName = fileName
 
     def run(self):  
-        def bumatoyuanmaSingle(x):
-            if (x > 32767): 
-                x = x - 65536 
-            return x
-              
         def readTxtFile():
             while not self.stopped:
                 aiData = []
@@ -73,7 +73,7 @@ class SignalThread(threading.Thread):
                 for line in aqFile.readlines(): 
                     aqData.append(int(line))
 
-                self.data = combineData(aiData, aqData)
+                self.data = mainWindow.combineData(aiData, aqData)
                 on_draw(self.axes, self.canvas, self.data)
             
         def readBinFile(datapath):
@@ -85,111 +85,22 @@ class SignalThread(threading.Thread):
                             self.stop()
                             break
                             
-                        result = parseIQData(block,  False)
+                        result = mainWindow.parseIQData(block,  False)
                         aiData  = result[0]
                         aqData = result[1]
                         biData  = result[2]
                         bqData = result[3]
                       
                         if( mainWindow.radioButton_CHA.isChecked() == True ):
-                            self.data = combineData(aiData, aqData)
+                            self.data = mainWindow.combineData(aiData, aqData)
                             on_draw(self.axes, self.canvas, self.data)
                         else:
-                            self.data = combineData(biData, bqData)
+                            self.data = mainWindow.combineData(biData, bqData)
                             on_draw(self.axes, self.canvas, self.data)
-            
-        def combineData(iData, qData):
-             y = []
-             for i in range(len(iData)):
-               y.append(complex(iData[i],qData[i]))
-             yLength = len(y)
-             # hanning window
-             hanning_window = np.hanning(yLength)
-             xf = np.fft.fft(y * hanning_window)
-             xf = np.fft.fftshift(abs(xf))
-             xf = 20*np.log10(abs(xf)) - 121.5 # -154+35-2.5
-             
-             skipNum = int(yLength * 100/1500)
-             xf = xf[skipNum:yLength-skipNum]
-             return xf   
-
-        def get_time_stamp():
-            ct = time.time()
-            local_time = time.localtime(ct)
-            data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-            data_secs = (ct - int(ct)) * 1000
-            time_stamp = "%s.%03d" % (data_head, data_secs)
-            return time_stamp
-            
-        def parseIQData(data, withHead):
-            if (withHead):
-                data = data[40:]                
-
-            # just for testing
-            #data = data[40:]
-            aiData = []
-            aqData = []
-            biData = []
-            bqData = []
-            if (len(data) >= 1024 and len(data) <= 32768):
-              # Parse Payload...
-                #offsetRegTuple, offsetRegValueTuple, offsetReg, offsetRegValue
-                # Save the original payload
-                now = datetime.datetime.now()
-                currentTime = now.strftime('%Y-%m-%d-%H-%M-%S') 
-                ms = get_time_stamp()
-                currentTime = currentTime +"-" + ms[-3:]
-    #            rawFileName = "RawIQ-" + currentTime + ".dat"
-    #            rawFile=open(rawFileName,'wb')
-    #            rawFile.write(newdata)
-    #            rawFile.close()
-
-               # 32*1024 * 1024bytes,  AIQ/BIQ 4 Byes I Data, 4 Bytes Q data
-                times = 0
-                for pos in range(0, 32*1024,8):
-                    times +=1
-                    line = data[pos:pos+8]
-                    
-                    # 0XFF00, should be unpack one byte by one, 
-                    # otherwise, the data will be upack to 0x00FF, 
-                    # WE want ti to be still 0XFF00, call ntohs to reverse it
-                    if (len(line) == 8):
-                        aiData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
-                        aqData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
-                        biData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
-                        bqData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
-
-                # Save the IQ data 
-                folderPath = os.path.split(os.path.realpath(__file__))[0]
-                aiFileName = folderPath + "\\Data\\AI-" + currentTime + ".txt"
-                aqFileName =  folderPath + "\\Data\\AQ-" + currentTime + ".txt"
-                biFileName =  folderPath + "\\Data\\BI-" + currentTime + ".txt"   
-                bqFileName =  folderPath + "\\Data\\BQ-" + currentTime + ".txt"
-                aiFile=open(aiFileName,'w')
-                aqFile=open(aqFileName,'w')
-                biFile=open(biFileName,'w')
-                bqFile=open(bqFileName,'w')
-                  
-                  # Save the IQ Data
-                for i in range(len(aiData)):
-                      aiFile.write(str(aiData[i]))
-                      aiFile.write('\n');    
-                      aqFile.write(str(aqData[i]))
-                      aqFile.write('\n')
-                      biFile.write(str(biData[i]))
-                      biFile.write('\n');    
-                      bqFile.write(str(bqData[i]))
-                      bqFile.write('\n')
-
-                aiFile.close()
-                aqFile.close()
-                biFile.close()
-                bqFile.close()
-            
-            return (aiData,aqData,biData,bqData)
-        
+                            
         def realtimecapture():
           print ("Real Time Capture.......")
+          
           while not self.stopped:
             mainWindow.sendCmdRAW_AD_SAMPLE()
             mainWindow.udpSocketClient.receiveData()
@@ -199,12 +110,9 @@ class SignalThread(threading.Thread):
             
             print  ("Receive Total Length: ", len(data))
             if data:
-              #self.data_shiyu = parseShiyuData(data, True)
-              #on_draw(self.axes_shiyu, self.canvas_shiyu, self.data_shiyu)
-              
               # Save the data into one folder
               #Save raw data
-              folderName = os.path.join(path.dirname(__file__), "Data\\Data-StartTime-" + startTime)
+              folderName = os.path.join(path.dirname(__file__), "Data\\")
               if (not(os.path.exists(folderName))):
                   os.mkdir(folderName)  
               
@@ -215,20 +123,18 @@ class SignalThread(threading.Thread):
               rawFile.write(data)
               rawFile.close()
               
-              result = parseIQData(data, True)
+              result = mainWindow.parseIQData(data, True)
           
               aiData = result[0]
               aqData = result[1]
               biData = result[2]
               bqData = result[3]
-              
-              #print (len(aiData))
-          
+
               if( mainWindow.radioButton_CHA_RealTime.isChecked()== True ):
-                self.data = combineData(aiData, aqData)
+                self.data = mainWindow.combineData(aiData, aqData)
                 on_draw(self.axes, self.canvas, self.data)
               else:
-                self.data_pinpu = combineData(biData, bqData)
+                self.data = mainWindow.combineData(biData, bqData)
                 on_draw(self.axes, self.canvas, self.data)
         
         def readanddraw():
@@ -238,238 +144,20 @@ class SignalThread(threading.Thread):
             readBinFile(self.fileName)
             #readBinFile(r"D:\Tasks\Work\SSDCaptureSave\Data\0_3_196611196611_1966113.dat")
             #readTxtFile()
-
             self.stop()
-#          if not self.stopped:
-            #if (self.pinpu):
-            # aiData = []
-            # aqData = []
-            # aiData = readFile("D:\\Tasks\\XY\\UI\\AI-2018-01-22-21-04-40.txt")
-            # aqData = readFile("D:\\Tasks\\XY\\UI\\AQ-2018-01-22-21-04-40.txt")
-            # #self.data_pinpu = combineData(aiData, aqData)
-            # #on_draw(self.axes_pinpu, self.canvas_pinpu, self.data_pinpu)
-          
-            # # if( self.channelA == True ):
-              # # self.data_pinpu = combineData(aiData, aqData)
-              # # on_draw(self.axes_pinpu, self.canvas_pinpu, self.data_pinpu)
-            # # else:
-              # # self.data_shiyu = readFile("D:\\Tasks\\XY\\UI\\AI-2018-01-22-21-04-40.txt")
-              # # on_draw(self.axes_shiyu, self.canvas_shiyu, self.data_shiyu)
-          
-            # time.sleep()
-
-            # biData = []
-            # bqData = []
-            # biData = readFile("D:\\Tasks\\XY\\UI\\BI-2018-01-22-21-04-40.txt")
-            # bqData = readFile("D:\\Tasks\\XY\\UI\\BQ-2018-01-22-21-04-40.txt")
-            #self.data_pinpu = combineData(biData, bqData)
-            #on_draw(self.axes_pinpu, self.canvas_pinpu, self.data_pinpu)
-            
-            # if( self.channelA == True ):
-              # self.data_pinpu = combineData(biData, bqData)
-              # on_draw(self.axes_pinpu, self.canvas_pinpu, self.data_pinpu)
-            # else:
-            # Iterate all files in currentFolder
-            
-#              for dirpath, dirnames,  filenames in os.walk(self.currentFolder):
-#                for file in filenames:
-#                    if not self.stopped:
-#                      # find the files and start and end time and also all the files size
-#                        filePath = os.path.join(dirpath, file)
-#                        self.data = readFile(filePath)
-#                        on_draw(self.axes, self.canvas, self.data)
-#                        progressValue += 1
-#                        mainWindow.horizontalSlider.setValue(progressValue)
-#                        if progressValue == 100:
-#                          progressValue = 0
-#                          
-#                break # stop
-#                self.stop()
         
-        def on_draw( axes, canvas, data):
-            x = np.linspace(100*1e6, 1.4*1e9, len(data))  
-            # clear the axes and redraw the plot anew
-            axes.clear()      
-            axes.set_title('Signal')
-            axes.set_xlabel('Freqs(Hz)')
-            axes.set_ylabel('dBm')  
-            axes.grid(mainWindow.checkBox_ShowGrid.isChecked())
-            axes.plot(x, data)
-            canvas.draw()
-
-        now = datetime.datetime.now()
-        startTime = now.strftime('%Y-%m-%d-%H-%M-%S')
-        subthread = None
-#        if (self.replay):
-        if (True):
-            subthread = threading.Thread(target=readanddraw) 
-        else:
-            subthread = threading.Thread(target=realtimecapture)
-            
-        subthread.setDaemon(True)  
-        subthread.start()  
-        
-    def stop(self): 
-        print ("Stop thread...")
-        self.stopped = True  
-
-    def isStopped(self):  
-        return self.stopped  
-        
-    def bumatoyuanma(self,  x):
-      for i in range(len(x)):   
-        if (x[i] > 32767):
-          x[i]= x[i]-65536
-      return x
-
-    def bumatoyuanmaSingle(x):
-      if (x > 32767): 
-         x = x - 65536 
-      return x
-
-class RealTimeThread(threading.Thread):  
-    def __init__(self, axes, canvas, timeout):  
-        super(RealTimeThread, self).__init__()  
-        self.axes = axes
-        self.canvas = canvas
-        self.timeout = timeout 
-        self.data = []
-        self.stopped = False  
-
-    def run(self):  
-        def combineData(iData, qData):
-            y = []
-            for i in range(len(iData)):
-              y.append(complex(iData[i],qData[i]))
-            
-            yLength = len(y)
-             # hanning window
-            hanning_window = np.hanning(yLength)
-            xf = np.fft.fft(y * hanning_window)
-            xf = np.fft.fftshift(abs(xf))
-            xf = 20*np.log10(abs(xf)) - 142.5
-         
-            #skipNum = int(yLength * 100/1500)
-            skipNum = 0
-            xf = xf[skipNum:yLength-skipNum]
-            return xf   
-        
-        def bumatoyuanmaSingle(x):
-           if (x > 32767): 
-               x = x - 65536 
-           return x
-   
-        def get_time_stamp():
-            ct = time.time()
-            local_time = time.localtime(ct)
-            data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-            data_secs = (ct - int(ct)) * 1000
-            time_stamp = "%s.%03d" % (data_head, data_secs)
-            return time_stamp
-   
-        def parseIQData(data, withHead):
-            if (withHead):
-               newdata = data[16:]
-              #print ( "New Data Length: ",  len(newdata))
-
-            aiData = []
-            aqData = []
-            biData = []
-            bqData = []
-
-            # Save the original payload
-            #now = datetime.datetime.now()
-            
-            #currentTime = now.strftime('%Y-%m-%d-%H-%M-%S-%ms') 
-            now = datetime.datetime.now()
-            currentTime = now.strftime('%Y-%m-%d-%H-%M-%S') 
-            ms = get_time_stamp()
-            currentTime = currentTime +"-" + ms[-3:]
-            
-            folderPath = os.path.split(os.path.realpath(__file__))[0]
-            rawFileName = folderPath + "\\RawIQ-" + currentTime + ".dat"
-            rawFile=open(rawFileName,'wb')
-            rawFile.write(newdata)
-            rawFile.close()
-
-           # 32*1024 bytes AIAQBIBQ ... 
-           #  Each data occupy 2 bytes, so iterate one row data by 8 bytes
-           
-            for pos in range(0, 32*1024,8):
-                line = newdata[pos:pos+8]
-                
-                # 0XFF00, should be unpack one byte by one, 
-                # otherwise, the data will be upack to 0x00FF, 
-                # WE want ti to be still 0XFF00, call ntohs to reverse it
-                if (len(line) == 8):
-                    aiData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
-                    aqData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
-                    biData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
-                    bqData.append(bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
-                else:
-                    aiData.append(0)
-                    aqData.append(0)
-                    biData.append(0)
-                    bqData.append(0)
-
-
-            # Save the IQ data 
-            folderPath = os.path.split(os.path.realpath(__file__))[0]
-            aiFileName = folderPath + "\\Data\\AI-" + currentTime + ".txt"
-            aqFileName =  folderPath + "\\Data\\AQ-" + currentTime + ".txt"
-            biFileName =  folderPath + "\\Data\\BI-" + currentTime + ".txt"   
-            bqFileName =  folderPath + "\\Data\\BQ-" + currentTime + ".txt"
-            
-            aiFile=open(aiFileName,'w')
-            aqFile=open(aqFileName,'w')
-            biFile=open(biFileName,'w')
-            bqFile=open(bqFileName,'w')
-            
-            print (len(aiData))
-              # Save the IQ Data
-            for i in range(len(aiData)):
-              aiFile.write(str(aiData[i]))
-              aiFile.write('\n');    
-              aqFile.write(str(aqData[i]))
-              aqFile.write('\n')
-              biFile.write(str(biData[i]))
-              biFile.write('\n');    
-              bqFile.write(str(bqData[i]))
-              bqFile.write('\n')
-
-            aiFile.close()
-            aqFile.close()
-            biFile.close()
-            bqFile.close()
-            
-            return (aiData,aqData,biData,bqData)
-        
-        def realtimecapture():
-          print ("Real Time Capture.......")
-          while not self.stopped:
-            mainWindow.sendCmdRAW_AD_SAMPLE()
-            mainWindow.udpSocketClient.receiveData()
-
-            # Parse Data...
-            data = mainWindow.udpSocketClient.mData
-            
-            print  ("Receive Total Length: ", len(data))
-            if data and len(data) >= 32*1024:
-                result = parseIQData(data, True)
-                aiData = result[0]
-                aqData = result[1]
-                biData = result[2]
-                bqData = result[3]
-          
-                if( mainWindow.radioButton_CHA_RealTime.isChecked() == True ):
-                    self.data = combineData(aiData, aqData)
-                    on_draw(self.axes, self.canvas, self.data)
-                else:
-                    self.data = combineData(biData, bqData)
-                    on_draw(self.axes, self.canvas, self.data)
+#        def on_draw( axes, canvas, data):
+#            x = np.linspace(100*1e6, 1.4*1e9, len(data))  
+#            # clear the axes and redraw the plot anew
+#            axes.clear()      
+#            axes.set_title('Signal')
+#            axes.set_xlabel('Freqs(Hz)')
+#            axes.set_ylabel('dBm')  
+#            axes.grid(mainWindow.checkBox_ShowGrid.isChecked())
+#            axes.plot(x, data)
+#            canvas.draw()
 
         def on_draw( axes, canvas, data):
-            print (len(data))
             x = np.linspace(100*1e6, 1.4*1e9, len(data))  
             # clear the axes and redraw the plot anew
             axes.clear() 
@@ -478,7 +166,6 @@ class RealTimeThread(threading.Thread):
             axes.set_ylabel('dBm')
             refLevel = 0
             refLevelStr = mainWindow.lineEdit_RefLevel.text();
-#            print (refLevelStr)
             if (('-' )  == refLevelStr or "" == refLevelStr):
                 refLevel = 0
             else:
@@ -501,8 +188,86 @@ class RealTimeThread(threading.Thread):
             axes.plot(x, data)
             canvas.draw()
 
-        now = datetime.datetime.now()
-        startTime = now.strftime('%Y-%m-%d-%H-%M-%S')
+#        now = datetime.datetime.now()
+#        startTime = now.strftime('%Y-%m-%d-%H-%M-%S')
+        subthread = threading.Thread(target=readanddraw) 
+        subthread.setDaemon(True)  
+        subthread.start()  
+        
+    def stop(self): 
+        print ("Stop thread...")
+        self.stopped = True  
+
+    def isStopped(self):  
+        return self.stopped  
+
+class RealTimeThread(threading.Thread):  
+    def __init__(self, axes, canvas, timeout):  
+        super(RealTimeThread, self).__init__()  
+        self.axes = axes
+        self.canvas = canvas
+        self.timeout = timeout 
+        self.data = []
+        self.stopped = False  
+
+    def run(self):  
+        def realtimecapture():
+           print ("Real Time Capture.......")
+           while not self.stopped:
+                mainWindow.sendCmdRAW_AD_SAMPLE()
+                mainWindow.udpSocketClient.receiveData()
+
+                # Parse Data...
+                data = mainWindow.udpSocketClient.mData
+                
+                print  ("Receive Total Length: ", len(data))
+                if (data and len(data) >= 32*1024):
+                    result = mainWindow.parseIQData(data, True)
+                    aiData = result[0]
+                    aqData = result[1]
+                    biData = result[2]
+                    bqData = result[3]
+              
+                    if( mainWindow.radioButton_CHA_RealTime.isChecked() == True ):
+                        self.data = mainWindow.combineData(aiData, aqData)
+                        on_draw(self.axes, self.canvas, self.data)
+                    else:
+                        self.data = mainWindow.combineData(biData, bqData)
+                        on_draw(self.axes, self.canvas, self.data)
+
+        def on_draw( axes, canvas, data):
+            x = np.linspace(100*1e6, 1.4*1e9, len(data))  
+            # clear the axes and redraw the plot anew
+            axes.clear() 
+            axes.set_title('Signal')
+            axes.set_xlabel('Freqs(Hz)')
+            axes.set_ylabel('dBm')
+            refLevel = 0
+            refLevelStr = mainWindow.lineEdit_RefLevel.text();
+            if (('-' )  == refLevelStr or "" == refLevelStr):
+                refLevel = 0
+            else:
+                refLevel = int(refLevelStr)
+            
+            scaleStr = mainWindow.lineEdit_Scale.text()
+            scale = 10
+            if (('-' )  == scaleStr or "" == scaleStr):
+                scale = 10
+            else:
+                scale = int(scaleStr)
+
+            axes.set_ylim(refLevel -10*scale,refLevel)
+            ymajorLocator = MultipleLocator(10) 
+            yminorLocator = MultipleLocator(5) 
+            axes.yaxis.set_major_locator(ymajorLocator)
+            axes.yaxis.set_minor_locator(yminorLocator)
+            
+            axes.grid(mainWindow.checkBox_ShowGrid_RealTime.isChecked())
+            axes.plot(x, data)
+            canvas.draw()
+
+       # now = datetime.datetime.now()
+        #startTime = now.strftime('%Y-%m-%d-%H-%M-%S')
         subthread = threading.Thread(target=realtimecapture)
         subthread.setDaemon(True)  
         subthread.start()  
@@ -573,6 +338,99 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Create context menu for SSD files
         self.createSSDContextMenu()
     
+    
+    def combineData(self,  iData, qData):
+        y = []
+        for i in range(len(iData)):
+          y.append(complex(iData[i],qData[i]))
+        
+        yLength = len(y)
+         # hanning window
+        hanning_window = np.hanning(yLength)
+        xf = np.fft.fft(y * hanning_window)
+        xf = np.fft.fftshift(abs(xf))
+        xf = 20*np.log10(abs(xf)) - 121.5
+     
+        skipNum = int(yLength * 100/1500)
+        #skipNum = 0
+        xf = xf[skipNum:yLength-skipNum]
+        return xf   
+        
+    def bumatoyuanmaSingle(self,  x):
+       if (x > 32767): 
+           x = x - 65536 
+       return x
+
+    def get_time_stamp(self):
+        ct = time.time()
+        local_time = time.localtime(ct)
+        data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
+        data_secs = (ct - int(ct)) * 1000
+        time_stamp = "%s.%03d" % (data_head, data_secs)
+        return time_stamp
+    
+    
+    def parseIQData(self, data, withHead):
+        if (withHead):
+            data = data[40:]                
+
+        # just for testing
+        #data = data[40:]
+        aiData = []
+        aqData = []
+        biData = []
+        bqData = []
+        if (len(data) >= 1024 and len(data) <= 32768):
+            now = datetime.datetime.now()
+            currentTime = now.strftime('%Y-%m-%d-%H-%M-%S') 
+            ms = self.get_time_stamp()
+            currentTime = currentTime +"-" + ms[-3:]
+
+           # 32*1024 * 1024bytes,  AIQ/BIQ 4 Byes I Data, 4 Bytes Q data
+            times = 0
+            for pos in range(0, 32*1024,8):
+                times +=1
+                line = data[pos:pos+8]
+                
+                # 0XFF00, should be unpack one byte by one, 
+                # otherwise, the data will be upack to 0x00FF, 
+                # WE want ti to be still 0XFF00, call ntohs to reverse it
+                if (len(line) == 8):
+                    aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
+                    aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
+                    biData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
+                    bqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
+
+            # Save the IQ data 
+            folderPath = os.path.split(os.path.realpath(__file__))[0]
+            aiFileName = folderPath + "\\Data\\AI-" + currentTime + ".txt"
+            aqFileName =  folderPath + "\\Data\\AQ-" + currentTime + ".txt"
+            biFileName =  folderPath + "\\Data\\BI-" + currentTime + ".txt"   
+            bqFileName =  folderPath + "\\Data\\BQ-" + currentTime + ".txt"
+            aiFile=open(aiFileName,'w')
+            aqFile=open(aqFileName,'w')
+            biFile=open(biFileName,'w')
+            bqFile=open(bqFileName,'w')
+              
+              # Save the IQ Data
+            for i in range(len(aiData)):
+                  aiFile.write(str(aiData[i]))
+                  aiFile.write('\n');    
+                  aqFile.write(str(aqData[i]))
+                  aqFile.write('\n')
+                  biFile.write(str(biData[i]))
+                  biFile.write('\n');    
+                  bqFile.write(str(bqData[i]))
+                  bqFile.write('\n')
+
+            aiFile.close()
+            aqFile.close()
+            biFile.close()
+            bqFile.close()
+        
+        return (aiData,aqData,biData,bqData)
+        
+        
     # For Test Now
     def actionHandler(self):
         '''
@@ -670,7 +528,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.SSDModel.setItem(rowcount,self.ssdNumCol,QtGui.QStandardItem(str(data[8])))
         
         self.tableView_SSD.setModel(self.SSDModel) 
-
 
     def tableView_Local_Init(self):  
         print (sys._getframe().f_code.co_name)
