@@ -51,7 +51,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tabConfig">
        <property name="contextMenuPolicy">
@@ -715,7 +715,7 @@
        <widget class="QPushButton" name="pushButton_ReadTest">
         <property name="geometry">
          <rect>
-          <x>620</x>
+          <x>630</x>
           <y>10</y>
           <width>91</width>
           <height>23</height>
@@ -723,6 +723,32 @@
         </property>
         <property name="text">
          <string>Test Read SSD</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="lineEdit_Times">
+        <property name="geometry">
+         <rect>
+          <x>820</x>
+          <y>10</y>
+          <width>51</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>1</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label">
+        <property name="geometry">
+         <rect>
+          <x>740</x>
+          <y>10</y>
+          <width>71</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Read Times:</string>
         </property>
        </widget>
       </widget>

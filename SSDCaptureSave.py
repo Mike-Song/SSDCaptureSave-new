@@ -85,7 +85,7 @@ class SignalThread(threading.Thread):
                             self.stop()
                             break
                             
-                        result = mainWindow.parseIQData(block,  False)
+                        result = mainWindow.parseIQData(block,  False,  False)
                         aiData  = result[0]
                         aqData = result[1]
                         biData  = result[2]
@@ -117,13 +117,13 @@ class SignalThread(threading.Thread):
                   os.mkdir(folderName)  
               
               now = datetime.datetime.now()
-              currentTime = now.strftime('%Y-%m-%d-%H-%M-%S')
+              currentTime = self.get_time_stamp()
               filename = "Data-" + currentTime + ".txt"
               rawFile=open(folderName + "\\" + filename,'wb')
               rawFile.write(data)
               rawFile.close()
               
-              result = mainWindow.parseIQData(data, True)
+              result = mainWindow.parseIQData(data, True, True)
           
               aiData = result[0]
               aqData = result[1]
@@ -222,7 +222,7 @@ class RealTimeThread(threading.Thread):
                 
                 print  ("Receive Total Length: ", len(data))
                 if (data and len(data) >= 32*1024):
-                    result = mainWindow.parseIQData(data, True)
+                    result = mainWindow.parseIQData(data, True,True)
                     aiData = result[0]
                     aqData = result[1]
                     biData = result[2]
@@ -278,6 +278,7 @@ class RealTimeThread(threading.Thread):
 
     def isStopped(self):  
         return self.stopped  
+
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -364,16 +365,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def get_time_stamp(self):
         ct = time.time()
         local_time = time.localtime(ct)
-        data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
+        data_head = time.strftime("%Y-%m-%d-%H-%M-%S", local_time)
         data_secs = (ct - int(ct)) * 1000
         time_stamp = "%s.%03d" % (data_head, data_secs)
         return time_stamp
-    
-    
-    def parseIQData(self, data, withHead):
-        if (withHead):
-            data = data[40:]                
 
+    
+    
+    def parseIQData(self, data, realTime,  withHead):
+        if (withHead):
+            if (realTime):
+                data = data[16:] 
+            else:
+                data = data[40:]   
+                
         # just for testing
         #data = data[40:]
         aiData = []
@@ -381,66 +386,97 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         biData = []
         bqData = []
         if (len(data) >= 1024 and len(data) <= 32768):
-            now = datetime.datetime.now()
-            currentTime = now.strftime('%Y-%m-%d-%H-%M-%S') 
-            ms = self.get_time_stamp()
-            currentTime = currentTime +"-" + ms[-3:]
-
-           # 32*1024 * 1024bytes,  AIQ/BIQ 4 Byes I Data, 4 Bytes Q data
+            currentTime = self.get_time_stamp()
+           # 32*1024 * 1024bytes,  AAIAQAIAQBIBQBIBQ for real time
+           # for SSD Save,  A/B are separate, and the data is IQIQ
             times = 0
-            for pos in range(0, 32*1024,8):
+            for pos in range(0, 32*1024,16):
                 times +=1
-                line = data[pos:pos+8]
+                line = data[pos:pos+16]
                 
                 # 0XFF00, should be unpack one byte by one, 
                 # otherwise, the data will be upack to 0x00FF, 
-                # WE want ti to be still 0XFF00, call ntohs to reverse it
-                if (len(line) == 8):
-                    aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
-                    aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
-                    biData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
-                    bqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
+                # WE want it to be still 0XFF00, call ntohs to reverse it
+                if (len(line) == 16):
+                    if (realTime): #AIAQAIAQBIBQBIBQ for real time
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
+                        biData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[8:10])[0])))
+                        bqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[10:12])[0])))
+                        biData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[12:14])[0])))
+                        bqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[14:16])[0])))
+                    else:
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[0:2])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[2:4])[0])))
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[4:6])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[6:8])[0])))
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[8:10])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[10:12])[0])))
+                        aiData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[12:14])[0])))
+                        aqData.append(self.bumatoyuanmaSingle(ntohs(struct.unpack('H',line[14:16])[0])))
+                else:
+                    print ("len(line): ",  len(line))
 
             # Save the IQ data 
             folderPath = os.path.split(os.path.realpath(__file__))[0]
-            aiFileName = folderPath + "\\Data\\AI-" + currentTime + ".txt"
-            aqFileName =  folderPath + "\\Data\\AQ-" + currentTime + ".txt"
-            biFileName =  folderPath + "\\Data\\BI-" + currentTime + ".txt"   
-            bqFileName =  folderPath + "\\Data\\BQ-" + currentTime + ".txt"
-            aiFile=open(aiFileName,'w')
-            aqFile=open(aqFileName,'w')
-            biFile=open(biFileName,'w')
-            bqFile=open(bqFileName,'w')
-              
-              # Save the IQ Data
-            for i in range(len(aiData)):
-                  aiFile.write(str(aiData[i]))
-                  aiFile.write('\n');    
-                  aqFile.write(str(aqData[i]))
-                  aqFile.write('\n')
-                  biFile.write(str(biData[i]))
-                  biFile.write('\n');    
-                  bqFile.write(str(bqData[i]))
-                  bqFile.write('\n')
+            aiFileName = ""
+            aqFileName = ""
+            biFileName = ""
+            bqFileName = ""
+            if (realTime):
+                aiFileName = folderPath + "\\Data\\AI-" + currentTime + ".txt"
+                aqFileName =  folderPath + "\\Data\\AQ-" + currentTime + ".txt"
+                biFileName =  folderPath + "\\Data\\BI-" + currentTime + ".txt"   
+                bqFileName =  folderPath + "\\Data\\BQ-" + currentTime + ".txt"
+                aiFile=open(aiFileName,'w')
+                aqFile=open(aqFileName,'w')
+                biFile=open(biFileName,'w')
+                bqFile=open(bqFileName,'w')
+                  
+                  # Save the IQ Data
+                for i in range(len(aiData)):
+                      aiFile.write(str(aiData[i]))
+                      aiFile.write('\n');    
+                      aqFile.write(str(aqData[i]))
+                      aqFile.write('\n')
+                      biFile.write(str(biData[i]))
+                      biFile.write('\n');    
+                      bqFile.write(str(bqData[i]))
+                      bqFile.write('\n')
 
-            aiFile.close()
-            aqFile.close()
-            biFile.close()
-            bqFile.close()
-        
+                aiFile.close()
+                aqFile.close()
+                biFile.close()
+                bqFile.close()
+            else:
+                aiFileName = folderPath + "\\Data\\I-" + currentTime + ".txt"
+                aqFileName =  folderPath + "\\Data\\Q-" + currentTime + ".txt"
+                aiFile=open(aiFileName,'w')
+                aqFile=open(aqFileName,'w')
+                # Save the IQ Data
+                for i in range(len(aiData)):
+                      aiFile.write(str(aiData[i]))
+                      aiFile.write('\n');    
+                      aqFile.write(str(aqData[i]))
+                      aqFile.write('\n')
+
+                aiFile.close()
+                aqFile.close()
+                
         return (aiData,aqData,biData,bqData)
         
         
     # For Test Now
     def actionHandler(self):
-        '''
-        菜单中的具体action调用的函数
-        '''
         print ('action handler')
+        
+    def downloadtoLocal(self):
+        print (sys._getframe().f_code.co_name)
     
     def showSSDContextMenu(self,  pos):
-        print (pos)
-        self.SSD_ContextMenu.move(pos)
+        self.SSD_ContextMenu.move(QtGui.QCursor.pos())
         self.SSD_ContextMenu.show()
         
     def createSSDContextMenu(self):
@@ -448,10 +484,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableView_SSD.customContextMenuRequested.connect(self.showSSDContextMenu)
  
         self.SSD_ContextMenu = QtWidgets.QMenu(self)
-        self.SSD_ActionA = self.SSD_ContextMenu.addAction(u'动作A')
+        self.SSD_ActionA = self.SSD_ContextMenu.addAction(u'Save to Local')
         self.SSD_ActionB = self.SSD_ContextMenu.addAction(u'动作B')
         self.SSD_ActionC = self.SSD_ContextMenu.addAction(u'动作C')
-        self.SSD_ActionA.triggered.connect(self.actionHandler)
+        self.SSD_ActionA.triggered.connect(self.downloadtoLocal)
         self.SSD_ActionB.triggered.connect(self.actionHandler)
         self.SSD_ActionC.triggered.connect(self.actionHandler)
 
@@ -576,7 +612,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
           
         #表头信息显示居中  
         self.tableView_Local.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)  
-  
 
     def tableView_Local_InsertData(self,  data):
         print (sys._getframe().f_code.co_name)
@@ -604,21 +639,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Set Foucs on the tab_Play
         #self.tab_Play.setForeground()
         self.tabWidget.setCurrentIndex(3);
-
-#        currentFolder = None
-#        if (self.selectFolder != None):
-#            #print (self.LocalModel.item(self.tableView_Local.currentIndex().row(), 4).data(Qt.DisplayRole))
-#            currentFolder = os.path.join(self.selectFolder, self.LocalModel.item(self.tableView_Local.currentIndex().row(), 0).data(Qt.DisplayRole))
         
         self.pushButton_StartReplay.setEnabled(False)
 
-        self.signalThread = SignalThread(self.axes, self.canvas, fullFilePath, 1.0)
-        self.signalThread.setDaemon(True)
-        self.signalThread.start()
+        self.replayThread = SignalThread(self.axes, self.canvas, fullFilePath, 1.0)
+        self.replayThread.setDaemon(True)
+        self.replayThread.start()
     
     def stopReplay (self):
         print (sys._getframe().f_code.co_name)
-        self.signalThread.stop()
+        self.replayThread.stop()
         self.pushButton_StartReplay.setEnabled(True)
         # self.action_exit.triggered.connect(self.onExitTriggered)
         # self.action_copy.triggered.connect(self.onCopyTriggered)
@@ -827,8 +857,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if (not lastFrame):
             fileIO.write(data)
         else:
-            fileIO.write(data[0:len(data)-16])
+#            fileIO.write(data[0:len(data)-16])
+#            fileIO.close()
+            fileIO.write(data)
             fileIO.close()
+
             
     @pyqtSlot()
     def on_pushButton_StartReplay_clicked(self):
@@ -955,9 +988,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Refresh table view
         # self.sendCmdSSD_AD_PROFILE(True,  0, 0,  0) # SSDNum 0
         #s elf.sendCmdSSD_AD_PROFILE(True,  1,  0,  0) # SSDNum 1
-
-    
-    
     
     def readDataTest(self):
         # Reset
@@ -1104,16 +1134,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Send 1024 time for each file to save it
         length = 32*1024;
         iter = 0
-        while (iter < 10):
+        readTimes = eval(self.lineEdit_Times.text())
+        while (iter < readTimes):
             iter += 1
             #self.sendCmdSSD_AD_DATA(adid, 0x00,  snLow,  snHigh,  timeLow, timeHigh, length, ssdNum  )
             self.sendCmdSSD_AD_DATA(0, 0x00,  0,  0,  0, 0, length, 0  )
-            self.saveSSD_AD_DATA(fileIO, False)
+            
+            if (iter ==  readTimes):
+                self.saveSSD_AD_DATA(fileIO, True)
+            else:
+                self.saveSSD_AD_DATA(fileIO, False)
         
         # Send for the last frame
         #self.sendCmdSSD_AD_DATA(adid, 0x00,  snLow,  snHigh,  timeLow, timeHigh, length,  ssdNum )
-        self.sendCmdSSD_AD_DATA(0, 0x00,  0,  0,  0, 0, length,  0 )
-        self.saveSSD_AD_DATA(fileIO, True)
+        if (readTimes == 1024):
+            self.sendCmdSSD_AD_DATA(0, 0x00,  0,  0,  0, 0, length,  0 )
+            self.saveSSD_AD_DATA(fileIO, True)
         
         # Add into the local view
         startAddrLow = ""
@@ -1273,13 +1309,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         currentValue = currentValue & mask
         self.sendCmdWRREG(regAddr,  currentValue) 
         
+    
     @pyqtSlot()
     def on_pushButton_Start_RealTime_clicked(self):
         """
         Slot documentation goes here.
         """
         
-        self.sendCmdStartRealTime()
+        #self.sendCmdStartRealTime()
         time.sleep(0.1) # Sleep 100 ms to wait the start cmd has been received.
         
         self.pushButton_Start_RealTime.setEnabled(False)
@@ -1293,7 +1330,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         Slot documentation goes here.
         """
-        self.sendCmdStopRealTime()
+        #self.sendCmdStopRealTime()
         
         print (sys._getframe().f_code.co_name)
         self.realTimeThread.stop()
